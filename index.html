@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSTEK Corporation - Interactive Datacenter Experience</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff88;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        /* Loader inicial */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            transition: opacity 1s ease;
+        }
+
+        .loader-text {
+            font-size: 2rem;
+            color: #00ff88;
+            text-align: center;
+            animation: pulse 2s infinite;
+        }
+
+        /* Header minimalista */
+        .header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #00ff88;
+            padding: 15px 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 20px #00ff88;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .lang-toggle {
+            background: transparent;
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .lang-toggle:hover {
+            background: #00ff88;
+            color: #000;
+            box-shadow: 0 0 15px #00ff88;
+        }
+
+        /* Canvas container */
+        .canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* HUD (Heads-Up Display) */
+        .hud {
+            position: fixed;
+            top: 80px;
+            left: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            padding: 20px;
+            max-width: 350px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .hud h3 {
+            color: #00ccff;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .hud p {
+            line-height: 1.6;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+
+        .hud-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .control-hint {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            color: #00ff88;
+        }
+
+        /* Elementos interactivos flotantes */
+        .interactive-label {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff88;
+            padding: 15px 20px;
+            color: #00ff88;
+            font-size: 1.1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        .interactive-label.visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: all;
+        }
+
+        .interactive-label:hover {
+            background: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+            transform: scale(1.05);
+            border-color: #00ccff;
+        }
+
+        .interactive-label::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 10px solid #00ff88;
+        }
+
+        /* Indicadores de esquinas */
+        .corner-indicator {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border: 2px solid #00ff88;
+            z-index: 10;
+            opacity: 0.3;
+        }
+
+        .corner-indicator.top-left {
+            top: 100px;
+            left: 30px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .corner-indicator.top-right {
+            top: 100px;
+            right: 30px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .corner-indicator.bottom-left {
+            bottom: 30px;
+            left: 30px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .corner-indicator.bottom-right {
+            bottom: 30px;
+            right: 30px;
+            border-left: none;
+            border-top: none;
+        }
+
+        /* Panel de información detallada */
+        .info-panel {
+            position: fixed;
+            right: -500px;
+            top: 80px;
+            width: 450px;
+            height: calc(100vh - 100px);
+            background: rgba(0, 0, 0, 0.95);
+            border-left: 2px solid #00ff88;
+            padding: 30px;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 200;
+            overflow-y: auto;
+            backdrop-filter: blur(15px);
+        }
+
+        .info-panel.active {
+            right: 0;
+        }
+
+        .close-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #00ff88;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .close-panel:hover {
+            color: #ff4444;
+            transform: rotate(90deg);
+        }
+
+        .panel-title {
+            color: #00ccff;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #00ff88;
+            padding-bottom: 10px;
+        }
+
+        .panel-content {
+            color: #ccc;
+            line-height: 1.8;
+        }
+
+        .panel-content h4 {
+            color: #00ff88;
+            margin: 20px 0 10px 0;
+            font-size: 1.2rem;
+        }
+
+        .panel-content ul {
+            padding-left: 20px;
+            margin: 15px 0;
+        }
+
+        .panel-content li {
+            margin: 8px 0;
+            color: #aaa;
+        }
+
+        /* Crosshair personalizado */
+        .crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: #00ff88;
+            opacity: 0.7;
+        }
+
+        .crosshair::before {
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            transform: translateY(-50%);
+        }
+
+        .crosshair::after {
+            left: 50%;
+            top: 0;
+            width: 1px;
+            height: 100%;
+            transform: translateX(-50%);
+        }
+
+        /* Status bar inferior */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid #00ff88;
+            display: flex;
+            align-items: center;
+            padding: 0 30px;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .status-left {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .status-item {
+            color: #00ff88;
+            font-size: 0.9rem;
+        }
+
+        .status-value {
+            color: #00ccff;
+            margin-left: 5px;
+        }
+
+        .fps-counter {
+            color: #00ff88;
+            font-family: monospace;
+        }
+
+        /* Animaciones */
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        @keyframes glow {
+            from { 
+                text-shadow: 0 0 20px #00ff88; 
+            }
+            to { 
+                text-shadow: 0 0 30px #00ff88, 0 0 40px #00ccff; 
+            }
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff88, transparent);
+            animation: scanline 3s linear infinite;
+            z-index: 5;
+            opacity: 0.3;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hud {
+                display: none;
+            }
+            .info-panel {
+                width: 100%;
+                right: -100%;
+            }
+            .nav-container {
+                padding: 0 15px;
+            }
+            .logo {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loader -->
+    <div class="loader" id="loader">
+        <div class="loader-text">
+            <div>MSTEK CORPORATION</div>
+            <div style="font-size: 1rem; margin-top: 10px;">INITIALIZING DATACENTER...</div>
+            <div style="font-size: 0.8rem; margin-top: 20px; opacity: 0.7;">Loading 3D Environment</div>
+        </div>
+    </div>
+
+    <!-- Scanline effect -->
+    <div class="scanline"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="logo">MSTEK CORPORATION</div>
+            <div class="header-info">
+                <div style="color: #00ccff; font-size: 0.9rem;">DATACENTER CONTROL ROOM</div>
+                <button class="lang-toggle" onclick="toggleLanguage()">ES / EN</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Canvas Container -->
+    <div class="canvas-container" id="canvas-container"></div>
+
+    <!-- Crosshair -->
+    <div class="crosshair"></div>
+
+    <!-- HUD -->
+    <div class="hud">
+        <h3>NAVIGATION INTERFACE</h3>
+        <p>Explora el centro de datos interactivo. Haz clic en los elementos para acceder a información detallada sobre nuestras soluciones.</p>
+        <div class="hud-controls">
+            <div class="control-hint">MOUSE: Rotar vista</div>
+            <div class="control-hint">CLICK: Seleccionar</div>
+            <div class="control-hint">SCROLL: Zoom</div>
+        </div>
+    </div>
+
+    <!-- Corner Indicators -->
+    <div class="corner-indicator top-left"></div>
+    <div class="corner-indicator top-right"></div>
+    <div class="corner-indicator bottom-left"></div>
+    <div class="corner-indicator bottom-right"></div>
+
+    <!-- Interactive Labels -->
+    <div class="interactive-label" id="label-racks">
+        <div>SERVER RACKS</div>
+        <div style="font-size: 0.8rem; opacity: 0.8;">Infraestructura de Servidores</div>
+    </div>
+
+    <div class="interactive-label" id="label-crac">
+        <div>CRAC UNITS</div>
+        <div style="font-size: 0.8rem; opacity: 0.8;">Climatización Crítica</div>
+    </div>
+
+    <div class="interactive-label" id="label-ups">
+        <div>UPS SYSTEMS</div>
+        <div style="font-size: 0.8rem; opacity: 0.8;">Energía Crítica</div>
+    </div>
+
+    <div class="interactive-label" id="label-generators">
+        <div>GENERATORS</div>
+        <div style="font-size: 0.8rem; opacity: 0.8;">Energía de Respaldo</div>
+    </div>
+
+    <div class="interactive-label" id="label-chillers">
+        <div>CHILLERS</div>
+        <div style="font-size: 0.8rem; opacity: 0.8;">Sistema de Refrigeración</div>
+    </div>
+
+    <div class="interactive-label" id="label-monitoring">
+        <div>MONITORING</div>
+        <div style="font-size: 0.8rem; opacity: 0.8;">Centro de Control</div>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="info-panel" id="info-panel">
+        <button class="close-panel" onclick="closeInfoPanel()">×</button>
+        <div class="panel-title" id="panel-title">System Information</div>
+        <div class="panel-content" id="panel-content">
+            <!-- Content will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-left">
+            <div class="status-item">STATUS: <span class="status-value">ONLINE</span></div>
+            <div class="status-item">SYSTEMS: <span class="status-value">OPERATIONAL</span></div>
+            <div class="status-item">TEMP: <span class="status-value">22°C</span></div>
+        </div>
+        <div class="fps-counter" id="fps-counter">FPS: 60</div>
+    </div>
+
+    <script>
+        // Variables globales
+        let scene, camera, renderer, controls;
+        let datacenterObjects = {};
+        let raycaster, mouse;
+        let animationId;
+        let currentLanguage = 'es';
+
+        // Datos de contenido para los paneles
+        const panelData = {
+            es: {
+                racks: {
+                    title: "SERVER RACKS & INFRASTRUCTURE",
+                    content: `
+                        <h4>Infraestructura de Servidores</h4>
+                        <p>Racks estándar de 19" y 23" para alojar servidores, switches y equipamiento de red crítico.</p>
+                        
+                        <h4>Especificaciones</h4>
+                        <ul>
+                            <li>Racks de 42U, 45U y 47U</li>
+                            <li>Capacidad de carga hasta 1500kg</li>
+                            <li>Sistema de cableado estructurado</li>
+                            <li>PDUs inteligentes con monitoreo</li>
+                        </ul>
+                        
+                        <h4>Servicios Incluidos</h4>
+                        <ul>
+                            <li>Instalación y configuración</li>
+                            <li>Gestión de cables</li>
+                            <li>Monitoreo 24/7</li>
+                            <li>Mantenimiento preventivo</li>
+                        </ul>
+                    `
+                },
+                crac: {
+                    title: "CRAC UNITS - CLIMATIZACIÓN CRÍTICA",
+                    content: `
+                        <h4>Computer Room Air Conditioning</h4>
+                        <p>Unidades de climatización de precisión diseñadas específicamente para centros de datos.</p>
+                        
+                        <h4>Tecnologías Disponibles</h4>
+                        <ul>
+                            <li>CRAC con expansión directa</li>
+                            <li>CRAC con agua refrigerada</li>
+                            <li>Sistemas de free-cooling</li>
+                            <li>Control de humedad y temperatura</li>
+                        </ul>
+                        
+                        <h4>Beneficios</h4>
+                        <ul>
+                            <li>Temperatura constante ±1°C</li>
+                            <li>Humedad relativa 45-55%</li>
+                            <li>Eficiencia energética optimizada</li>
+                            <li>Redundancia N+1</li>
+                        </ul>
+                    `
+                },
+                ups: {
+                    title: "UPS SYSTEMS - ENERGÍA CRÍTICA",
+                    content: `
+                        <h4>Sistemas de Energía Ininterrumpida</h4>
+                        <p>Protección total contra cortes, variaciones y disturbios eléctricos.</p>
+                        
+                        <h4>Tipos de UPS</h4>
+                        <ul>
+                            <li>UPS Online de doble conversión</li>
+                            <li>UPS Line Interactive</li>
+                            <li>UPS Modular escalable</li>
+                            <li>Sistemas centralizados</li>
+                        </ul>
+                        
+                        <h4>Capacidades</h4>
+                        <ul>
+                            <li>Desde 1kVA hasta 2000kVA</li>
+                            <li>Autonomía configurable</li>
+                            <li>Paralelización automática</li>
+                            <li>Monitoreo remoto SNMP</li>
+                        </ul>
+                    `
+                },
+                generators: {
+                    title: "GENERATORS - ENERGÍA DE RESPALDO",
+                    content: `
+                        <h4>Generadores Diésel</h4>
+                        <p>Respaldo energético para operación continua durante cortes prolongados.</p>
+                        
+                        <h4>Especificaciones</h4>
+                        <ul>
+                            <li>Grupos electrógenos 20kVA - 2000kVA</li>
+                            <li>Motores tier 4 de baja emisión</li>
+                            <li>Arranque automático < 15 segundos</li>
+                            <li>Tanques de combustible extendidos</li>
+                        </ul>
+                        
+                        <h4>Características</h4>
+                        <ul>
+                            <li>Control digital inteligente</li>
+                            <li>Sincronización automática</li>
+                            <li>Mantenimiento predictivo</li>
+                            <li>Monitoreo remoto 24/7</li>
+                        </ul>
+                    `
+                },
+                chillers: {
+                    title: "CHILLERS - SISTEMA DE REFRIGERACIÓN",
+                    content: `
+                        <h4>Enfriadores de Agua</h4>
+                        <p>Sistemas centralizados de refrigeración para grandes capacidades de cooling.</p>
+                        
+                        <h4>Tecnologías</h4>
+                        <ul>
+                            <li>Chillers centrífugos</li>
+                            <li>Chillers de tornillo</li>
+                            <li>Sistemas con free-cooling</li>
+                            <li>Refrigerantes ecológicos</li>
+                        </ul>
+                        
+                        <h4>Eficiencia</h4>
+                        <ul>
+                            <li>COP optimizado por condiciones</li>
+                            <li>Variadores de frecuencia</li>
+                            <li>Control predictivo</li>
+                            <li>Recuperación de calor</li>
+                        </ul>
+                    `
+                },
+                monitoring: {
+                    title: "MONITORING - CENTRO DE CONTROL",
+                    content: `
+                        <h4>DCIM - Data Center Infrastructure Management</h4>
+                        <p>Monitoreo y gestión integral de toda la infraestructura crítica.</p>
+                        
+                        <h4>Funcionalidades</h4>
+                        <ul>
+                            <li>Monitoreo de temperatura y humedad</li>
+                            <li>Gestión de energía y PUE</li>
+                            <li>Alertas predictivas</li>
+                            <li>Dashboard en tiempo real</li>
+                        </ul>
+                        
+                        <h4>Integraciones</h4>
+                        <ul>
+                            <li>Protocolos SNMP, Modbus, BACnet</li>
+                            <li>APIs para sistemas corporativos</li>
+                            <li>Reportes automatizados</li>
+                            <li>Control de acceso integrado</li>
+                        </ul>
+                    `
+                }
+            }
+        };
+
+        // Inicialización de Three.js
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 15, 25);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Raycaster for interactions
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Create datacenter environment
+            createDatacenterEnvironment();
+            createLighting();
+            createParticleSystem();
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('click', onMouseClick);
+
+            // Start animation loop
+            animate();
+
+            // Hide loader after 3 seconds
+            setTimeout(() => {
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loader').style.display = 'none';
+                }, 1000);
+            }, 3000);
+        }
+
+        function createDatacenterEnvironment() {
+            // Floor
+            const floorGeometry = new THREE.PlaneGeometry(100, 60);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x111111,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Create server racks
+            createServerRacks();
+            
+            // Create CRAC units
+            createCRACUnits();
+            
+            // Create UPS systems
+            createUPSSystems();
+            
+            // Create generators
+            createGenerators();
+            
+            // Create chillers
+            createChillers();
+            
+            // Create monitoring station
+            createMonitoringStation();
+            
+            // Create connecting cables/pipes
+            createConnections();
+        }
+
+        function createServerRacks() {
+            const rackGroup = new THREE.Group();
+            
+            for (let i = 0; i < 6; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const rackGeometry = new THREE.BoxGeometry(1, 3, 1.2);
+                    const rackMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0x333333,
+                        roughness: 0.3,
+                        metalness: 0.7
+                    });
+                    const rack = new THREE.Mesh(rackGeometry, rackMaterial);
+                    
+                    rack.position.set(i * 2 - 5, 1.5, j * 2 - 2);
+                    rack.castShadow = true;
+                    rack.userData = { type: 'racks', clickable: true };
+                    
+                    // Add LED indicators
+                    const ledGeometry = new THREE.SphereGeometry(0.05);
+                    const ledMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0x00ff00,
+                        emissive: 0x004400
+                    });
+                    const led = new THREE.Mesh(ledGeometry, ledMaterial);
+                    led.position.set(0.5, 1, 0.6);
+                    rack.add(led);
+                    
+                    rackGroup.add(rack);
+                }
+            }
+            
+            datacenterObjects.racks = rackGroup;
+            scene.add(rackGroup);
+        }
+
+        function createCRACUnits() {
+            const cracGroup = new THREE.Group();
+            
+            for (let i = 0; i < 3; i++) {
+                const cracGeometry = new THREE.BoxGeometry(2, 3.5, 1.5);
+                const cracMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x2a4d5a,
+                    roughness: 0.2,
+                    metalness: 0.8
+                });
+                const crac = new THREE.Mesh(cracGeometry, cracMaterial);
+                
+                crac.position.set(i * 4 - 4, 1.75, -8);
+                crac.castShadow = true;
+                crac.userData = { type: 'crac', clickable: true };
+                
+                // Add air vents
+                const ventGeometry = new THREE.PlaneGeometry(1.5, 0.3);
+                const ventMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x00ccff,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                for (let v = 0; v < 3; v++) {
+                    const vent = new THREE.Mesh(ventGeometry, ventMaterial);
+                    vent.position.set(0, 0.5 - v * 0.5, 0.76);
+                    crac.add(vent);
+                }
+                
+                cracGroup.add(crac);
+            }
+            
+            datacenterObjects.crac = cracGroup;
+            scene.add(cracGroup);
+        }
+
+        function createUPSSystems() {
+            const upsGroup = new THREE.Group();
+            
+            for (let i = 0; i < 4; i++) {
+                const upsGeometry = new THREE.BoxGeometry(1.5, 2, 0.8);
+                const upsMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x1a4a6b,
+                    roughness: 0.1,
+                    metalness: 0.9
+                });
+                const ups = new THREE.Mesh(upsGeometry, upsMaterial);
+                
+                ups.position.set(i * 2 - 3, 1, 8);
+                ups.castShadow = true;
+                ups.userData = { type: 'ups', clickable: true };
+                
+                // Add display screen
+                const screenGeometry = new THREE.PlaneGeometry(0.5, 0.3);
+                const screenMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x00ff88,
+                    emissive: 0x002200
+                });
+                const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+                screen.position.set(0, 0.5, 0.41);
+                ups.add(screen);
+                
+                upsGroup.add(ups);
+            }
+            
+            datacenterObjects.ups = upsGroup;
+            scene.add(upsGroup);
+        }
+
+        function createGenerators() {
+            const genGroup = new THREE.Group();
+            
+            for (let i = 0; i < 2; i++) {
+                const genGeometry = new THREE.BoxGeometry(3, 2.5, 2);
+                const genMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x4d4d00,
+                    roughness: 0.4,
+                    metalness: 0.6
+                });
+                const generator = new THREE.Mesh(genGeometry, genMaterial);
+                
+                generator.position.set(i * 6 - 3, 1.25, -15);
+                generator.castShadow = true;
+                generator.userData = { type: 'generators', clickable: true };
+                
+                genGroup.add(generator);
+            }
+            
+            datacenterObjects.generators = genGroup;
+            scene.add(genGroup);
+        }
+
+        function createChillers() {
+            const chillerGroup = new THREE.Group();
+            
+            for (let i = 0; i < 2; i++) {
+                const chillerGeometry = new THREE.BoxGeometry(4, 3, 2.5);
+                const chillerMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x0a3d5c,
+                    roughness: 0.2,
+                    metalness: 0.8
+                });
+                const chiller = new THREE.Mesh(chillerGeometry, chillerMaterial);
+                
+                chiller.position.set(i * 8 - 4, 1.5, 15);
+                chiller.castShadow = true;
+                chiller.userData = { type: 'chillers', clickable: true };
+                
+                // Add cooling fans
+                const fanGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.2);
+                const fanMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x666666,
+                    roughness: 0.1,
+                    metalness: 0.9
+                });
+                
+                for (let f = 0; f < 2; f++) {
+                    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+                    fan.position.set(f * 2 - 1, 1.6, 0);
+                    fan.rotation.x = Math.PI / 2;
+                    chiller.add(fan);
+                    
+                    // Animate fan rotation
+                    fan.userData = { rotationSpeed: 0.1 };
+                }
+                
+                chillerGroup.add(chiller);
+            }
+            
+            datacenterObjects.chillers = chillerGroup;
+            scene.add(chillerGroup);
+        }
+
+        function createMonitoringStation() {
+            const monitoringGroup = new THREE.Group();
+            
+            // Main console
+            const consoleGeometry = new THREE.BoxGeometry(3, 1.5, 2);
+            const consoleMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2a2a2a,
+                roughness: 0.1,
+                metalness: 0.9
+            });
+            const console = new THREE.Mesh(consoleGeometry, consoleMaterial);
+            console.position.set(-12, 0.75, 0);
+            console.castShadow = true;
+            console.userData = { type: 'monitoring', clickable: true };
+            
+            // Multiple screens
+            const screenGeometry = new THREE.PlaneGeometry(0.8, 0.6);
+            const screenMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ccff,
+                emissive: 0x002233
+            });
+            
+            for (let s = 0; s < 3; s++) {
+                const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+                screen.position.set(s * 0.9 - 0.9, 0.5, 1.01);
+                console.add(screen);
+            }
+            
+            // Chair
+            const chairGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.8);
+            const chairMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333333,
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            const chair = new THREE.Mesh(chairGeometry, chairMaterial);
+            chair.position.set(-12, 0.6, 3);
+            chair.castShadow = true;
+            
+            monitoringGroup.add(console);
+            monitoringGroup.add(chair);
+            
+            datacenterObjects.monitoring = monitoringGroup;
+            scene.add(monitoringGroup);
+        }
+
+        function createConnections() {
+            // Create cable trays and pipes connecting different systems
+            const connectionMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff88,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            // Power cables
+            const cableGeometry = new THREE.CylinderGeometry(0.05, 0.05, 20);
+            
+            for (let i = 0; i < 5; i++) {
+                const cable = new THREE.Mesh(cableGeometry, connectionMaterial);
+                cable.position.set(i * 2 - 4, 0.1, 0);
+                cable.rotation.z = Math.PI / 2;
+                scene.add(cable);
+            }
+            
+            // Cooling pipes
+            const pipeGeometry = new THREE.CylinderGeometry(0.1, 0.1, 25);
+            const pipeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ccff,
+                transparent: true,
+                opacity: 0.4
+            });
+            
+            for (let i = 0; i < 3; i++) {
+                const pipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
+                pipe.position.set(i * 4 - 4, 0.2, 3);
+                pipe.rotation.z = Math.PI / 2;
+                scene.add(pipe);
+            }
+        }
+
+        function createLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+            scene.add(ambientLight);
+
+            // Main directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 50;
+            scene.add(directionalLight);
+
+            // Colored accent lights
+            const accentLight1 = new THREE.PointLight(0x00ff88, 1, 50);
+            accentLight1.position.set(-10, 10, 0);
+            scene.add(accentLight1);
+
+            const accentLight2 = new THREE.PointLight(0x00ccff, 1, 50);
+            accentLight2.position.set(10, 10, 0);
+            scene.add(accentLight2);
+
+            // Flickering emergency lights
+            const emergencyLight = new THREE.PointLight(0xff4444, 0.5, 30);
+            emergencyLight.position.set(0, 8, -20);
+            scene.add(emergencyLight);
+            
+            // Animate emergency light
+            setInterval(() => {
+                emergencyLight.intensity = Math.random() * 0.8 + 0.2;
+            }, 200);
+        }
+
+        function createParticleSystem() {
+            // Floating particles for atmosphere
+            const particleCount = 1000;
+            const particles = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            
+            for (let i = 0, i3 = 0; i < particleCount; i++, i3 += 3) {
+                positions[i3] = (Math.random() - 0.5) * 200;
+                positions[i3 + 1] = Math.random() * 30;
+                positions[i3 + 2] = (Math.random() - 0.5) * 100;
+            }
+            
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0x00ff88,
+                size: 0.5,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particleSystem = new THREE.Points(particles, particleMaterial);
+            scene.add(particleSystem);
+            
+            // Animate particles
+            function animateParticles() {
+                const positions = particleSystem.geometry.attributes.position.array;
+                
+                for (let i = 1; i < positions.length; i += 3) {
+                    positions[i] += 0.01;
+                    if (positions[i] > 30) {
+                        positions[i] = 0;
+                    }
+                }
+                
+                particleSystem.geometry.attributes.position.needsUpdate = true;
+            }
+            
+            setInterval(animateParticles, 16);
+        }
+
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Update raycaster
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check intersections with clickable objects
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            
+            // Hide all labels first
+            document.querySelectorAll('.interactive-label').forEach(label => {
+                label.classList.remove('visible');
+            });
+            
+            // Show relevant label if hovering over clickable object
+            for (let intersect of intersects) {
+                if (intersect.object.userData.clickable) {
+                    const type = intersect.object.userData.type;
+                    const label = document.getElementById(`label-${type}`);
+                    if (label) {
+                        const screenPos = intersect.point.clone();
+                        screenPos.project(camera);
+                        
+                        const x = (screenPos.x + 1) * window.innerWidth / 2;
+                        const y = (-screenPos.y + 1) * window.innerHeight / 2;
+                        
+                        label.style.left = `${x}px`;
+                        label.style.top = `${y - 80}px`;
+                        label.classList.add('visible');
+                        
+                        document.body.style.cursor = 'pointer';
+                        break;
+                    }
+                } else {
+                    document.body.style.cursor = 'crosshair';
+                }
+            }
+        }
+
+        function onMouseClick(event) {
+            // Update raycaster
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check intersections
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            
+            for (let intersect of intersects) {
+                if (intersect.object.userData.clickable) {
+                    const type = intersect.object.userData.type;
+                    showInfoPanel(type);
+                    break;
+                }
+            }
+        }
+
+        function showInfoPanel(type) {
+            const panel = document.getElementById('info-panel');
+            const title = document.getElementById('panel-title');
+            const content = document.getElementById('panel-content');
+            
+            const data = panelData[currentLanguage][type];
+            if (data) {
+                title.textContent = data.title;
+                content.innerHTML = data.content;
+                panel.classList.add('active');
+            }
+        }
+
+        function closeInfoPanel() {
+            document.getElementById('info-panel').classList.remove('active');
+        }
+
+        function toggleLanguage() {
+            currentLanguage = currentLanguage === 'es' ? 'en' : 'es';
+            // Update language toggle button
+            const langButton = document.querySelector('.lang-toggle');
+            langButton.textContent = currentLanguage === 'es' ? 'ES / EN' : 'EN / ES';
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Animation loop
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            // Auto-rotate camera around the datacenter
+            const time = Date.now() * 0.0005;
+            camera.position.x = Math.cos(time) * 30;
+            camera.position.z = Math.sin(time) * 30;
+            camera.lookAt(0, 0, 0);
+            
+            // Animate chiller fans
+            scene.traverse((child) => {
+                if (child.userData.rotationSpeed) {
+                    child.rotation.z += child.userData.rotationSpeed;
+                }
+            });
+            
+            // Update FPS counter
+            updateFPSCounter();
+            
+            renderer.render(scene, camera);
+        }
+
+        let lastTime = Date.now();
+        let frameCount = 0;
+        
+        function updateFPSCounter() {
+            frameCount++;
+            const currentTime = Date.now();
+            
+            if (currentTime - lastTime >= 1000) {
+                const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                document.getElementById('fps-counter').textContent = `FPS: ${fps}`;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+        }
+
+        // Initialize everything when page loads
+        window.addEventListener('load', () => {
+            init();
+        });
+
+        // Handle page visibility change to pause/resume animation
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+            } else {
+                animate();
+            }
+        });
+    </script>
+</body>
+</html>
